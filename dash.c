@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <bits/types/FILE.h>
 
 #define ROW 10
 #define COL 100
@@ -179,7 +180,31 @@ void dash_looping(){
 
 int
 main(int argc, char **argv){
-    dash_looping();
+    if (argc > 2) {
+        perror("More than one arguments present!");
+    } else if (argc == 1) {
+        dash_looping();
+    } else {
+        char *input; char **args; int status; size_t bufsize = 0; size_t len;
+
+        FILE *fp = fopen(argv[argc-1], "r+");
+
+        len = getline(&input, &bufsize, fp);
+
+        if (len == -1){
+            perror("Failed to read line");
+        }
+        do {
+            len = getline(&input, &bufsize, fp);
+            args = parse(input);
+            status = execute(args);
+
+            free(input);
+            free(args);
+        } while (status);
+
+        fclose(fp);
+    }
     return EXIT_SUCCESS;
 }
 
