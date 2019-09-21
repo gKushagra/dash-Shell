@@ -52,6 +52,7 @@ int dash_path(char **args){
             while (i < ROW){
                 if (args[i] != NULL) {
                     strcpy(pth[j], args[i]);
+                    printf("Path added to Search Path %s\n",pth[j]);
                     i++;
                     j++;
                 } else {
@@ -77,7 +78,7 @@ char *read_command(void){
 /************************************PARSE INPUT**********************************/
 
 #define BUF_SIZE 64
-#define SEPARATORS " \t\n\a\r"
+#define SEPARATORS "' ','\t','\r','\n','\a'"
 char **parse(char *input) {
     int bufsize = BUF_SIZE, index = 0;
     char **cmd = malloc(bufsize * sizeof(char *));
@@ -123,10 +124,10 @@ int dash_process_creation(char **args) {
                 if (execv(pth[i], args) == -1) {
                     perror("No such command!");
                 }
-                exit(EXIT_FAILURE);
-                i++;
+                //exit(EXIT_FAILURE);
+                //i++;
             } else {
-                break;
+                i++;//break;
             }
         }
     } else if (pid < 0){
