@@ -4,11 +4,14 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <bits/types/FILE.h>
+#include <stdbool.h>
+#include <fcntl.h>
 
 #define ROW 10
 #define COL 100
 char pth[ROW][COL]= {"/bin/"};
 
+int pos; bool has;
 
 /*******************************BUILTINS******************************************/
 
@@ -64,6 +67,83 @@ int dash_path(char **args){
     return 1;
 }
 
+/****************************PROCESS CREATION*************************************/
+
+int dash_process_creation(char **args) {
+
+    pid_t pid; int status; int i = 0;
+
+    pid = fork();
+
+    if (pid == 0) {
+        if (has == true) {
+
+            char *filename=args[pos+1];
+
+            int fd;
+            if ((fd = open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) == -1) {
+                perror("Error opening file");
+            }
+
+            dup2(fd, STDOUT_FILENO);
+            dup2(fd, STDERR_FILENO);
+
+            close(fd);
+
+            args[pos] = NULL;
+            args[pos+1] = NULL;
+
+            while (i < sizeof(pth)/ sizeof(char *)) {
+                strcat(pth[i], args[0]);
+                if (access(pth[i], X_OK) == 0) {
+                    if (execv(pth[i], args) == -1) {
+                        perror("No such command!");
+                    }
+                    exit(0);
+                } else {
+                    i++;
+                }
+            }
+        } else {
+            while (i < sizeof(pth)/ sizeof(char *)) {
+                strcat(pth[i], args[0]);
+                if (access(pth[i], X_OK) == 0) {
+                    if (execv(pth[i], args) == -1) {
+                        perror("No such command!");
+                    }
+                    exit(1);
+                } else {
+                    i++;
+                }
+            }
+        }
+    } else if (pid < 0){
+        perror("Error in forking");
+    } else {
+        do {
+            waitpid(pid, &status, WUNTRACED);
+        } while (!WIFEXITED(status));
+    }
+    return 1;
+}
+
+
+/***************************EXECUTING COMMANDS***********************************/
+
+int execute(char **args){
+    int i;
+    if (args[0] == NULL){
+        return 1;
+    }
+
+    for (i = 0; i < dash_num_builtins(); ++i) {
+        if (strcmp(args[0],built_in[i]) == 0){
+            return (*builtin_funct[i])(args);
+        }
+    }
+    return dash_process_creation(args);
+}
+
 /*************************************READ COMMAND*********************************/
 
 char *read_command(void){
@@ -91,9 +171,23 @@ char **parse(char *input) {
     }
 
     token = strtok(input, SEPARATORS);
+
     while (token != NULL) {
         cmd[index] = token;
-        index++;
+
+        if (strcmp(token,"&") == 0){
+            cmd[index]=NULL;
+            execute(cmd);
+            index=0;
+        }
+        else if (strcmp(token,">") == 0){
+            pos=index;
+            has=true;
+            index++;
+        }
+        else {
+            index++;
+        }
 
         if (index > bufsize) {
             bufsize += BUF_SIZE;
@@ -110,53 +204,8 @@ char **parse(char *input) {
     return cmd;
 }
 
-/****************************PROCESS CREATION*************************************/
-
-int dash_process_creation(char **args) {
-
-    pid_t pid; int status; int i = 0;
-
-    pid = fork();
-
-    if (pid == 0) {
-        while (i < ROW) {
-            strcat(pth[i], args[0]);
-            if (access(pth[i], X_OK) == 0) {
-                if (execv(pth[i], args) == -1) {
-                    perror("No such command!");
-                }
-                //exit(EXIT_FAILURE);
-                //i++;
-            } else {
-                i++;//break;
-            }
-        }
-    } else if (pid < 0){
-        perror("Error in forking");
-    } else {
-        do {
-            waitpid(pid, &status, WUNTRACED);
-        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-    }
-    return 1;
-}
 
 
-/***************************EXECUTING COMMANDS***********************************/
-
-int execute(char **args){
-    int i;
-    if (args[0] == NULL){
-        return 1;
-    }
-
-    for (i = 0; i < dash_num_builtins(); ++i) {
-        if (strcmp(args[0],built_in[i]) == 0){
-            return (*builtin_funct[i])(args);
-        }
-    }
-    return dash_process_creation(args);
-}
 
 /******************************LOOPING*******************************************/
 
@@ -189,13 +238,12 @@ main(int argc, char **argv){
 
         FILE *fp = fopen(argv[argc-1], "r+");
 
-        len = getline(&input, &bufsize, fp);
-
-        if (len == -1){
-            perror("Failed to read line");
-        }
         do {
             len = getline(&input, &bufsize, fp);
+            if (len == -1){
+                perror("Done with this file!");
+                exit(EXIT_FAILURE);
+            }
             args = parse(input);
             status = execute(args);
 
