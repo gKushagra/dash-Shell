@@ -307,6 +307,13 @@ main(int argc, char **argv){
 
         FILE *fp = fopen(argv[argc-1], "r+");
 
+        if(!fp){
+            if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
+                perror("Error writing");
+            }
+            exit(1);
+        }
+
         do {
             len = getline(&input, &bufsize, fp);
             if (len == -1){
