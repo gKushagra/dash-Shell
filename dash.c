@@ -1,7 +1,7 @@
-/*-----------------------------------------------------------------------------------------------------
+/*------------------------------------------------
         This code belongs to Kushagra Gupta
         The University of Texas at Dallas
--------------------------------------------------------------------------------------------------------
+--------------------------------------------------
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,17 +12,17 @@
 #include <stdbool.h>
 #include <fcntl.h>
 
-/******************************************GLOBAL DEC.**************************************************/
+/*******************GLOBAL DEC.********************/
 
 #define ROW 10
 #define COL 100
-char pth[ROW][COL]= {"/bin/"};              //Path variable for storing search paths
+char pth[ROW][COL]= {"/bin/"};//Path variable for storing search paths
 
 int pos; bool has;
 
-char error_message[30]="An error has occured \n";                   // Error message
+char error_message[30]="An error has occured \n"; // Error message
 
-/********************************************BUILTINS****************************************************/
+/*******************BUILTINS**********************/
 
 int dash_cd(char **args);
 int dash_exit(char **args);
@@ -42,36 +42,30 @@ int dash_num_builtins(){
     return sizeof(built_in)/ sizeof(char *);
 }
 
-int dash_cd(char **args){                       //cd builtin
+int dash_cd(char **args){ //cd builtin
     if (args[1] == NULL){
         if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
             perror("Error writing");
         }
-        // fprintf(stderr, "Argument expected to cd \n");
     } else {
-        if (chdir(args[1]) != 0){           //using chdir system call
+        if (chdir(args[1]) != 0){ //using chdir system call
             if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
                 perror("Error writing");
             }
-            //write(STDERR_FILENO, error_message, strlen(error_message));
-            // perror("Sorry! No such directory");
         }
     }
     return 1;
 }
 
-int dash_exit(char **args){     // exit builtin
+int dash_exit(char **args){ // exit builtin
     exit(0);
 }
 
-int dash_path(char **args){      // function for storing search paths entered by user
+int dash_path(char **args){ // function for storing search paths entered by user
     if (args[1] == NULL){
         if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
             perror("Error writing");
         }
-
-        //write(STDERR_FILENO, error_message, strlen(error_message));
-        //fprintf(stderr,"Argument Expected to path \n");
     } else {
             int i=1, j=0;
             while (i < ROW){
@@ -88,96 +82,84 @@ int dash_path(char **args){      // function for storing search paths entered by
     return 1;
 }
 
-/****************************************PROCESS CREATION**************************************************/
+/*****************PROCESS CREATION*****************************/
 
 int dash_process_creation(char **args) {
 
     pid_t pid; int status; int i = 0;
 
-    pid = fork();
+        pid = fork();
 
-    if (pid == 0) {
-        if (has == true) {  // if user wants output redirected to a file
+        if (pid == 0) {
+            if (has == true) {  // if user wants output redirected to a file
 
-            char *filename=args[pos+1];
+                char *filename = args[pos + 1];
 
-            int fd;
-            fpos_t position;
-            fgetpos(stdout, &position);
+                int fd;
+                fpos_t position;
+                fgetpos(stdout, &position);
 
-            if ((fd = open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) == -1) {
-                if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
-                    perror("Error writing");
-                }
-                // write(STDERR_FILENO, error_message, strlen(error_message));
-                //perror("Error opening file");
-            }
-
-            dup2(fd, STDOUT_FILENO);
-            dup2(fd, STDERR_FILENO);
-            fflush(stdout);
-
-            args[pos] = NULL;
-            args[pos+1] = NULL;
-
-            while (i < sizeof(pth)/ sizeof(char *)) {
-                strcat(pth[i], args[0]);
-                if (access(pth[i], X_OK) == 0) {
-                    if (execv(pth[i], args) < 0) {
-                        if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
-                            perror("Error writing");
-                        }
-
-                        // write(STDERR_FILENO, error_message, strlen(error_message));
-                        //perror("No such command!");
-                        exit(1);
+                if ((fd = open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) == -1) {
+                    if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)) {
+                        perror("Error writing");
                     }
-                    //exit(0);
-                } else {
-                    i++;
                 }
-            }
 
-            close(fd);
-            clearerr(stdout);
-            fsetpos(stdout, &position);  //restoring console position
+                dup2(fd, STDOUT_FILENO);
+                dup2(fd, STDERR_FILENO);
+                fflush(stdout);
 
-        } else {     // using stdout
-            while (i < sizeof(pth)/ sizeof(char *)) {
-                strcat(pth[i], args[0]);
-                if (access(pth[i], X_OK) == 0) { // access system call to check for existence
-                    if (execv(pth[i], args) < 0) {
-                        if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
-                            perror("Error writing");
+                args[pos] = NULL;
+                args[pos + 1] = NULL;
+
+                while (i < sizeof(pth) / sizeof(char *)) {
+                    strcat(pth[i], args[0]);
+                    if (access(pth[i], X_OK) == 0) {
+                        if (execv(pth[i], args) < 0) {
+                            if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)) {
+                                perror("Error writing");
+                            }
+                            exit(1);
                         }
-
-                        // write(STDERR_FILENO, error_message, strlen(error_message));
-                        //perror("No such command!");
-                        exit(1);
+                    } else {
+                        i++;
                     }
-                    //exit(1);
-                } else {
-                    i++;
+                }
+
+                close(fd);
+                clearerr(stdout);
+                fsetpos(stdout, &position);  //restoring console position
+
+            } else {     // using stdout
+                while (i < sizeof(pth) / sizeof(char *)) {
+                    strcat(pth[i], args[0]);
+                    if (access(pth[i], X_OK) == 0) { // access system call to check for existence
+                        if (execv(pth[i], args) < 0) {
+                            if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)) {
+                                perror("Error writing");
+                            }
+                            exit(1);
+                        }
+                    } else {
+                        i++;
+                    }
                 }
             }
+        } else if (pid < 0) {
+            if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)) {
+                perror("Error writing");
+            }
+            exit(1);
+        } else {
+            do {
+                waitpid(pid, &status, WUNTRACED);
+            } while (!WIFEXITED(status));
         }
-    } else if (pid < 0){
-        if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
-            perror("Error writing");
-        }
-        // write(STDERR_FILENO, error_message, strlen(error_message));
-        //perror("Error in forking");
-        exit(1);
-    } else {
-        do {
-            waitpid(pid, &status, WUNTRACED);
-        } while (!WIFEXITED(status));
-    }
     return 1;
 }
 
 
-/****************************************EXECUTING COMMANDS******************************************/
+/*******************EXECUTING COMMANDS******************/
 
 int execute(char **args){ //if argc[1]=builtin then builtin otherwise launch cmd
     int i;
@@ -185,7 +167,7 @@ int execute(char **args){ //if argc[1]=builtin then builtin otherwise launch cmd
         return 1;
     }
 
-    for (i = 0; i < dash_num_builtins(); ++i) {
+    for (i = 0; i < dash_num_builtins(); i++) {
         if (strcmp(args[0],built_in[i]) == 0){
             return (*builtin_funct[i])(args);
         }
@@ -193,7 +175,7 @@ int execute(char **args){ //if argc[1]=builtin then builtin otherwise launch cmd
     return dash_process_creation(args);
 }
 
-/**********************************************READ COMMAND*****************************************/
+/********************READ COMMAND***********************/
 
 char *read_command(void){ //function to read input
     char *input = NULL;
@@ -203,8 +185,6 @@ char *read_command(void){ //function to read input
         if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
             perror("Error writing");
         }
-        // write(STDERR_FILENO, error_message, strlen(error_message));
-        //perror("Failed to read line");
     }
     return input;
 }
@@ -222,9 +202,6 @@ char **parse(char *input) {
         if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
             perror("Error writing");
         }
-
-        // write(STDERR_FILENO, error_message, strlen(error_message));
-        //fprintf(stderr, "Error in allocating memory");
         exit(1);
     }
 
@@ -240,7 +217,7 @@ char **parse(char *input) {
         } else if (strcmp(token,"&") == 0){
             cmd[index]=NULL;
             execute(cmd); //executing parallel processes
-            free(cmd);
+            //free(cmd);
             index=0;
         } else {
             index++;
@@ -253,9 +230,6 @@ char **parse(char *input) {
                 if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
                     perror("Error writing");
                 }
-
-                // write(STDERR_FILENO, error_message, strlen(error_message));
-                //fprintf(stderr, "Error in allocating memory");
                 exit(1);
             }
         }
@@ -269,7 +243,7 @@ char **parse(char *input) {
 
 
 
-/********************************************LOOPING*************************************************/
+/******************LOOPING***********************/
 
 void dash_looping(){
     char *input;
@@ -287,7 +261,7 @@ void dash_looping(){
     } while (status);
 }
 
-/*********************************************MAIN***************************************************/
+/****************MAIN***************************/
 
 int
 main(int argc, char **argv){
@@ -295,9 +269,6 @@ main(int argc, char **argv){
         if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
             perror("Error writing");
         }
-
-        // write(STDERR_FILENO, error_message, strlen(error_message));
-        //perror("More than one arguments present!");
     } else if (argc == 1) {
         dash_looping();
     } else { //batch mode
@@ -318,9 +289,6 @@ main(int argc, char **argv){
                 if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
                     perror("Error writing");
                 }
-
-                // write(STDERR_FILENO, error_message, strlen(error_message));
-                // perror("Done with this file!");
                 exit(1);
             }
             args = parse(input);
@@ -335,6 +303,6 @@ main(int argc, char **argv){
     return 0;
 }
 
-/****************************************************END**************************************************/
+/**************************END******************************/
 
 
