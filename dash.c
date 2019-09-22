@@ -101,23 +101,21 @@ int dash_process_creation(char **args) {
 
             char *filename=args[pos+1];
 
+            int fd;
             fpos_t position;
             fgetpos(stdout, &position);
-            int fd;
 
             if ((fd = open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) == -1) {
                 if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
                     perror("Error writing");
                 }
-
                 // write(STDERR_FILENO, error_message, strlen(error_message));
                 //perror("Error opening file");
             }
 
             dup2(fd, STDOUT_FILENO);
             dup2(fd, STDERR_FILENO);
-
-            close(fd);
+            fflush(stdout);
 
             args[pos] = NULL;
             args[pos+1] = NULL;
@@ -140,6 +138,7 @@ int dash_process_creation(char **args) {
                 }
             }
 
+            close(fd);
             clearerr(stdout);
             fsetpos(stdout, &position);
 
@@ -236,17 +235,16 @@ char **parse(char *input) {
     while (token != NULL) {
         cmd[index] = token;
 
-        if (strcmp(token,"&") == 0){
-            cmd[index]=NULL;
-            execute(cmd);
-            index=0;
-        }
-        else if (strcmp(token,">") == 0){
+        if (strcmp(token,">") == 0){
             pos=index;
             has=true;
             index++;
-        }
-        else {
+        } else if (strcmp(token,"&") == 0){
+            cmd[index]=NULL;
+            execute(cmd);
+            free(cmd);
+            index=0;
+        } else {
             index++;
         }
 
