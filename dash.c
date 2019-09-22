@@ -1,3 +1,8 @@
+/*
+        This code belongs to Kushagra Gupta
+        The University of Texas at Dallas
+
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,11 +12,15 @@
 #include <stdbool.h>
 #include <fcntl.h>
 
+/*****************************GLOBAL DEC.*****************************************/
+
 #define ROW 10
 #define COL 100
 char pth[ROW][COL]= {"/bin/"};
 
 int pos; bool has;
+
+char error_message[30]="An error has occured \n";
 
 /*******************************BUILTINS******************************************/
 
@@ -35,10 +44,17 @@ int dash_num_builtins(){
 
 int dash_cd(char **args){
     if (args[1] == NULL){
-        fprintf(stderr, "Argument expected to cd \n");
+        if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
+            perror("Error writing");
+        }
+        // fprintf(stderr, "Argument expected to cd \n");
     } else {
         if (chdir(args[1]) != 0){
-            perror("Sorry! No such directory");
+            if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
+                perror("Error writing");
+            }
+            //write(STDERR_FILENO, error_message, strlen(error_message));
+            // perror("Sorry! No such directory");
         }
     }
     return 1;
@@ -50,7 +66,12 @@ int dash_exit(char **args){
 
 int dash_path(char **args){
     if (args[1] == NULL){
-        fprintf(stderr,"Argument Expected to path \n");
+        if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
+            perror("Error writing");
+        }
+
+        //write(STDERR_FILENO, error_message, strlen(error_message));
+        //fprintf(stderr,"Argument Expected to path \n");
     } else {
             int i=1, j=0;
             while (i < ROW){
@@ -80,9 +101,17 @@ int dash_process_creation(char **args) {
 
             char *filename=args[pos+1];
 
+            fpos_t position;
+            fgetpos(stdout, &position);
             int fd;
+
             if ((fd = open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) == -1) {
-                perror("Error opening file");
+                if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
+                    perror("Error writing");
+                }
+
+                // write(STDERR_FILENO, error_message, strlen(error_message));
+                //perror("Error opening file");
             }
 
             dup2(fd, STDOUT_FILENO);
@@ -96,29 +125,51 @@ int dash_process_creation(char **args) {
             while (i < sizeof(pth)/ sizeof(char *)) {
                 strcat(pth[i], args[0]);
                 if (access(pth[i], X_OK) == 0) {
-                    if (execv(pth[i], args) == -1) {
-                        perror("No such command!");
+                    if (execv(pth[i], args) < 0) {
+                        if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
+                            perror("Error writing");
+                        }
+
+                        // write(STDERR_FILENO, error_message, strlen(error_message));
+                        //perror("No such command!");
+                        exit(1);
                     }
-                    exit(0);
+                    //exit(0);
                 } else {
                     i++;
                 }
             }
+
+            clearerr(stdout);
+            fsetpos(stdout, &position);
+
         } else {
             while (i < sizeof(pth)/ sizeof(char *)) {
                 strcat(pth[i], args[0]);
                 if (access(pth[i], X_OK) == 0) {
-                    if (execv(pth[i], args) == -1) {
-                        perror("No such command!");
+                    if (execv(pth[i], args) < 0) {
+                        if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
+                            perror("Error writing");
+                        }
+
+                        // write(STDERR_FILENO, error_message, strlen(error_message));
+                        //perror("No such command!");
+                        exit(1);
                     }
-                    exit(1);
+                    //exit(1);
                 } else {
                     i++;
                 }
             }
         }
     } else if (pid < 0){
-        perror("Error in forking");
+        if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
+            perror("Error writing");
+        }
+
+        // write(STDERR_FILENO, error_message, strlen(error_message));
+        //perror("Error in forking");
+        exit(1);
     } else {
         do {
             waitpid(pid, &status, WUNTRACED);
@@ -151,7 +202,12 @@ char *read_command(void){
     size_t bufsize = 0; size_t characters;
     characters = getline(&input, &bufsize, stdin);
     if (characters == -1){
-        perror("Failed to read line");
+        if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
+            perror("Error writing");
+        }
+
+        // write(STDERR_FILENO, error_message, strlen(error_message));
+        //perror("Failed to read line");
     }
     return input;
 }
@@ -166,8 +222,13 @@ char **parse(char *input) {
     char *token;
 
     if (!cmd) {
-        fprintf(stderr, "Error in allocating memory");
-        exit(EXIT_FAILURE);
+        if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
+            perror("Error writing");
+        }
+
+        // write(STDERR_FILENO, error_message, strlen(error_message));
+        //fprintf(stderr, "Error in allocating memory");
+        exit(1);
     }
 
     token = strtok(input, SEPARATORS);
@@ -193,8 +254,13 @@ char **parse(char *input) {
             bufsize += BUF_SIZE;
             cmd = realloc(cmd, bufsize * sizeof(char *));
             if (!cmd) {
-                fprintf(stderr, "Error in allocating memory");
-                exit(EXIT_FAILURE);
+                if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
+                    perror("Error writing");
+                }
+
+                // write(STDERR_FILENO, error_message, strlen(error_message));
+                //fprintf(stderr, "Error in allocating memory");
+                exit(1);
             }
         }
 
@@ -230,7 +296,12 @@ void dash_looping(){
 int
 main(int argc, char **argv){
     if (argc > 2) {
-        perror("More than one arguments present!");
+        if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
+            perror("Error writing");
+        }
+
+        // write(STDERR_FILENO, error_message, strlen(error_message));
+        //perror("More than one arguments present!");
     } else if (argc == 1) {
         dash_looping();
     } else {
@@ -241,8 +312,13 @@ main(int argc, char **argv){
         do {
             len = getline(&input, &bufsize, fp);
             if (len == -1){
-                perror("Done with this file!");
-                exit(EXIT_FAILURE);
+                if (write(STDERR_FILENO, error_message, strlen(error_message)) != strlen(error_message)){
+                    perror("Error writing");
+                }
+
+                // write(STDERR_FILENO, error_message, strlen(error_message));
+                // perror("Done with this file!");
+                exit(1);
             }
             args = parse(input);
             status = execute(args);
@@ -253,7 +329,7 @@ main(int argc, char **argv){
 
         fclose(fp);
     }
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 /********************************************************************************/
